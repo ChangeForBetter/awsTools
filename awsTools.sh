@@ -22,7 +22,8 @@ function ecstaskdiff() {
     ecstaskdesc $taskDefinition_a 2>&1 > $tmpDir/$taskDefinition_a
 
     if [ -z "$2" ]; then
-        taskFamily=$(jq '.taskDefinition.family' $tmpDir/$taskDefinition_a | sed s'/"//g')
+        # taskFamily is string, use -r(--raw-output) to remove quotes
+        taskFamily=$(jq -r '.taskDefinition.family' $tmpDir/$taskDefinition_a)
         latestRevison=$(jq '.taskDefinition.revision' $tmpDir/$taskDefinition_a)
         taskDefinition_b=$taskFamily:$(( $latestRevison - 1 ))
     else
