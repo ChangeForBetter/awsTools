@@ -1,7 +1,19 @@
 #!/bin/bash
 
+function ecssvcdesc() {
+    #cluster=$1
+    #services=$2
+    #shift 2
+    #aws ecs describe-services --cluster $cluster --services $services $@ | jq 'del(.services[].events, .services[].deployments)'
+    aws ecs describe-services $@ | jq 'del(.services[].events, .services[].deployments)'
+}
+
 function ecstaskdesc() {
-    aws ecs describe-task-definition --task-definition $1
+    aws ecs describe-task-definition --task-definition $@ | jq '.taskDefinition'
+}
+
+function ecstaskdefinitionexport() {
+    aws ecs describe-task-definition --task-definition $@ | jq '.taskDefinition|del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities)'
 }
 
 function ecstaskregister() {
@@ -19,7 +31,7 @@ function ecstaskdiff() {
     fi
 
     taskDefinition_a=$1
-    ecstaskdesc $taskDefinition_a 2>&1 > $tmpDir/$taskDefinition_a
+    aws ecs describe-task-definition --task-definition $taskDefinition_a 2>&1 > $tmpDir/$taskDefinition_a
 
     if [ -z "$2" ]; then
         # taskFamily is string, use -r(--raw-output) to remove quotes
@@ -29,7 +41,7 @@ function ecstaskdiff() {
     else
         taskDefinition_b=$2
     fi
-    ecstaskdesc $taskDefinition_b 2>&1 > $tmpDir/$taskDefinition_b
+    aws ecs describe-task-definition --task-definition $taskDefinition_b 2>&1 > $tmpDir/$taskDefinition_b
 
     icdiff $tmpDir/$taskDefinition_a $tmpDir/$taskDefinition_b
 }
