@@ -3,7 +3,7 @@
 
 startTime=$(date "+%Y-%m-%d %H:%M:%S")
 outPutFile='services.csv'
-echo "CLUSTER,SERVICE,DesiredCount,LaunchType,SchedulingStrategy,STOPPEDTaskCount,TASK,NetworkMode,CPU,MEMORY" | tee $outPutFile
+echo "CLUSTER,SERVICE,DesiredCount,LaunchType,SchedulingStrategy,STOPPEDTaskCount,TASK,NetworkMode,CPU,MEMORY,ContainerInfo" | tee $outPutFile
 # 1.Get clusters
 Clusters=$(aws ecs list-clusters | jq -r '.clusterArns[]' | awk -F '/' '{print $2}')
 
@@ -21,7 +21,11 @@ for cluster in $Clusters; do
         # 5.Get task definition information
         aws ecs describe-task-definition --task-definition $taskDefinition > /tmp/taskDefinition
         taskInfo=$(jq -r '.taskDefinition|.networkMode,.cpu,.memory' /tmp/taskDefinition)
-        echo $(echo -n "$cluster $serviceInfo $stoppedTaskCount $taskFamily $taskInfo" | tr '\n| ' ',') | tee -a $outPutFile
+        ContainerInfo=$(jq -c '.taskDefinition.containerDefinitions[]|{(.name):{cpu,memory,essential,memoryReservation}}' /tmp/taskDefinition)
+        # csv format: " --> "", whitespace --> \n, add " to the start and end of ContainerInfo
+        row=$(echo  "$cluster $serviceInfo $stoppedTaskCount $taskFamily $taskInfo" | tr "\n| " ",")
+        ContainerInfo=$(echo $ContainerInfo | sed -r 's/"/""/g;s/ /\n/g;s/^|$/"/g')
+        echo -e "${row}${ContainerInfo}" | tee -a $outPutFile
     done
 done
 
